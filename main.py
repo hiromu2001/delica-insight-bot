@@ -109,5 +109,65 @@ def generate_graphs(df: pd.DataFrame, dir_path: str):
 
     return urls
 
-# GPTに渡す要約プロンプト生成（変更なし）
-# ...以下略...
+# GPT用プロンプト生成
+def create_prompt(df: pd.DataFrame, graphs) -> str:
+    top_product = df.groupby("商品名")["販売数量"].sum().sort_values(ascending=False).head(3)
+    top_categories = df.groupby("カテゴリ")["販売金額"].sum().sort_values(ascending=False).head(3)
+    discount_stats = df["値引き率"].str.replace("%", "").astype(float).describe().to_dict()
+    waste_stats = df["廃棄率"].str.replace("%", "").astype(float).describe().to_dict()
+    daily = df.groupby("日付")["販売金額"].sum().to_dict()
+    category_share = df.groupby("カテゴリ")["販売金額"].sum().to_dict()
+    product_quantity = df.groupby("商品名")["販売数量"].sum().sort_values(ascending=False).head(10).to_dict()
+
+    prompt = f"""
+あなたは小売部門の売上分析担当アシスタントです。
+以下の1週間分の売上データとグラフに基づいて、次のようなアウトプットを生成してください。
+
+- 商品別・カテゴリ別の売上傾向や気づきを分析
+- 値引き率や廃棄率が高い商品への改善提案
+- 来週に向けた販売戦略（仕入れ強化・POP・販促など）
+
+【出力形式】
+・箇条書きで3〜5個にまとめてください
+・現場のデリカ担当者がすぐ動けるような視点で書いてください
+・300文字以内で
+
+- 売上上位商品: {top_product},
+- 売上上位カテゴリ: {top_categories},
+- 値引き率の統計情報: {discount_stats},
+- 廃棄率の統計情報: {waste_stats},
+- 日別売上金額: {daily},
+- カテゴリ別売上金額: {category_share},
+- 販売数量Top10商品: {product_quantity}
+
+【参考グラフ】
+"""
+    for graph in graphs:
+        prompt += f"\n- {graph['title']}:\n![]({graph['url']})"
+    return prompt
+
+# 週次レポートエンドポイント
+@app.post("/report")
+async def generate_weekly_report(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        df = pd.read_csv(pd.io.common.BytesIO(contents))
+        df["販売金額"] = clean_numeric_column(df, "販売金額")
+        df["販売数量"] = clean_numeric_column(df, "販売数量")
+
+        dir_path = prepare_graph_dir()
+        graphs = generate_graphs(df, dir_path)
+
+        prompt = create_prompt(df, graphs)
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "あなたは熟練のデータアナリストです。"},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        summary = response.choices[0].message.content
+        return JSONResponse(content={"graphs": graphs, "summary": summary})
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
