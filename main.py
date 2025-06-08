@@ -71,8 +71,8 @@ def generate_graphs(df: pd.DataFrame, dir_path: str):
     # グラフ2: カテゴリ別売上構成比
     fig, ax = plt.subplots(figsize=(6, 6))
     cat = df.groupby("カテゴリ")["販売金額"].sum()
-    ax.pie(cat, labels=cat.index, autopct='%1.1f%%', startangle=140)
-    ax.set_title("カテゴリ別売上構成比")
+    ax.pie(cat, labels=cat.index, autopct='%1.1f%%', startangle=140, textprops={'fontproperties': font_prop})
+    ax.set_title("カテゴリ別売上構成比", fontproperties=font_prop)
     path = f"{dir_path}/graph2_{uuid.uuid4()}.png"
     plt.tight_layout()
     plt.savefig(path)
@@ -121,7 +121,7 @@ def generate_graphs(df: pd.DataFrame, dir_path: str):
 
     return urls
 
-# GPT用プロンプト生成
+# 要約用プロンプト生成関数
 def create_prompt(df: pd.DataFrame, graphs) -> str:
     top_product = df.groupby("商品名")["販売数量"].sum().sort_values(ascending=False).head(3)
     top_categories = df.groupby("カテゴリ")["販売金額"].sum().sort_values(ascending=False).head(3)
