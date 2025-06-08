@@ -39,6 +39,14 @@ def prepare_graph_dir():
     os.makedirs(dir_path, exist_ok=True)
     return dir_path
 
+# 共通：フォント適用関数
+def apply_font(ax):
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontproperties(font_prop)
+    ax.title.set_fontproperties(font_prop)
+    ax.xaxis.label.set_fontproperties(font_prop)
+    ax.yaxis.label.set_fontproperties(font_prop)
+
 # グラフ生成処理
 def generate_graphs(df: pd.DataFrame, dir_path: str):
     plt.rcParams["font.family"] = font_prop.get_name()
@@ -53,6 +61,7 @@ def generate_graphs(df: pd.DataFrame, dir_path: str):
     ax.set_ylabel("売上金額（円）")
     ax.set_xticks(range(len(daily)))
     ax.set_xticklabels(daily.index, rotation=45)
+    apply_font(ax)
     path = f"{dir_path}/graph1_{uuid.uuid4()}.png"
     plt.tight_layout()
     plt.savefig(path)
@@ -76,6 +85,7 @@ def generate_graphs(df: pd.DataFrame, dir_path: str):
     sns.barplot(x=top.values, y=top.index, ax=ax)
     ax.set_title("商品別販売数量ランキング Top10")
     ax.set_xlabel("販売数量")
+    apply_font(ax)
     path = f"{dir_path}/graph3_{uuid.uuid4()}.png"
     plt.tight_layout()
     plt.savefig(path)
@@ -87,6 +97,7 @@ def generate_graphs(df: pd.DataFrame, dir_path: str):
     discount = df["値引き率"].str.replace("%", "").astype(float)
     sns.histplot(discount, bins=10, kde=True, ax=ax)
     ax.set_title("値引き率の分布")
+    apply_font(ax)
     path = f"{dir_path}/graph4_{uuid.uuid4()}.png"
     plt.tight_layout()
     plt.savefig(path)
@@ -101,6 +112,7 @@ def generate_graphs(df: pd.DataFrame, dir_path: str):
     ax.set_title("廃棄率 vs 値引き率")
     ax.set_xlabel("値引き率（%）")
     ax.set_ylabel("廃棄率（%）")
+    apply_font(ax)
     path = f"{dir_path}/graph5_{uuid.uuid4()}.png"
     plt.tight_layout()
     plt.savefig(path)
