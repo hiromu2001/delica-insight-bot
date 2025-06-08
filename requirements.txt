@@ -6,3 +6,4 @@ seaborn
 python-dotenv
 openai
 aiofiles
+python-multipart
