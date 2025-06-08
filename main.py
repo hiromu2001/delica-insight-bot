@@ -9,6 +9,7 @@ import uuid
 import aiofiles
 from openai import OpenAI
 from dotenv import load_dotenv
+import matplotlib.font_manager as fm
 
 # 環境変数をロード
 load_dotenv()
@@ -18,6 +19,11 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 日本語フォントの指定（Render用）
+font_path = "fonts/ipaexg.ttf"
+fm.fontManager.addfont(font_path)
+plt.rcParams["font.family"] = fm.FontProperties(fname=font_path).get_name()
 
 # ユーティリティ：数値列の前処理
 def clean_numeric_column(df, col):
@@ -31,7 +37,6 @@ def prepare_graph_dir():
 
 # グラフ生成処理
 def generate_graphs(df: pd.DataFrame, dir_path: str):
-    plt.rcParams['font.family'] = 'IPAexGothic'
     sns.set(style="whitegrid")
     urls = []
 
@@ -103,14 +108,33 @@ def generate_graphs(df: pd.DataFrame, dir_path: str):
 def create_prompt(df: pd.DataFrame) -> str:
     top_product = df.groupby("商品名")["販売数量"].sum().sort_values(ascending=False).head(3)
     top_categories = df.groupby("カテゴリ")["販売金額"].sum().sort_values(ascending=False).head(3)
+    discount_stats = df["値引き率"].str.replace("%", "").astype(float).describe().to_dict()
+    waste_stats = df["廃棄率"].str.replace("%", "").astype(float).describe().to_dict()
+
+    daily = df.groupby("日付")["販売金額"].sum().to_dict()
+    category_share = df.groupby("カテゴリ")["販売金額"].sum().to_dict()
+    product_quantity = df.groupby("商品名")["販売数量"].sum().sort_values(ascending=False).head(10).to_dict()
+
     prompt = f"""
-あなたは小売業界の売上分析アシスタントです。
-以下のデータに基づき、1週間の売上動向を300文字程度で要約してください。
+あなたは小売部門の売上分析担当アシスタントです。
+以下の1週間分の売上データに基づいて、次のようなアウトプットを生成してください。
 
-- 売上上位商品: {top_product.to_dict()}
-- 売上上位カテゴリ: {top_categories.to_dict()}
+- 商品別・カテゴリ別の売上傾向や気づきを分析
+- 値引き率や廃棄率が高い商品への改善提案
+- 来週に向けた販売戦略（仕入れ強化・POP・販促など）
 
-文章は箇条書き形式で、わかりやすく簡潔に書いてください。
+【出力形式】
+・箇条書きで3〜5個にまとめてください
+・現場のデリカ担当者がすぐ動けるような視点で書いてください
+・300文字以内で
+
+- 売上上位商品: {top_product.to_dict()},
+- 売上上位カテゴリ: {top_categories.to_dict()},
+- 値引き率の統計情報: {discount_stats},
+- 廃棄率の統計情報: {waste_stats},
+- 日別売上金額: {daily},
+- カテゴリ別売上金額: {category_share},
+- 販売数量Top10商品: {product_quantity}
 """
     return prompt
 
