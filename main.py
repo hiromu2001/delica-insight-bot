@@ -179,8 +179,12 @@ async def generate_weekly_report(file: UploadFile = File(...)):
             ]
         )
         summary = response.choices[0].message.content
-        markdown_images = "\n\n".join([f"### {g['title']}\n![]({g['url']})" for g in graphs])
-        full_text = f"{summary}\n\n{markdown_images}"
+        summary = response.choices[0].message.content
+
+markdown_images = "\n\n".join([f"**{g['title']}**\n\n![]({g['url']})" for g in graphs])
+
+full_text = f"{summary}\n\n---\n\n{markdown_images}"
+
 
         return JSONResponse(content={
             "text": full_text
