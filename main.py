@@ -179,10 +179,13 @@ async def generate_weekly_report(file: UploadFile = File(...)):
             ]
         )
         summary = response.choices[0].message.content
-        return JSONResponse(content={
-    "text": summary,
-    "images": [g["url"] for g in graphs]
+        markdown_images = "\n\n".join([f"### {g['title']}\n![]({g['url']})" for g in graphs])
+full_text = f"{summary}\n\n{markdown_images}"
+
+return JSONResponse(content={
+    "text": full_text
 })
+
 
 
     except Exception as e:
