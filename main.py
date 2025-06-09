@@ -159,17 +159,39 @@ def forecast(df, group_col, periods=7):
 
     return results
 
-@app.post("/report")
-async def generate_weekly_report(file: UploadFile = File(...)):
+@app.post("/predict")
+async def predict_sales(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         df = pd.read_csv(pd.io.common.BytesIO(contents))
         df["販売金額"] = clean_numeric_column(df, "販売金額")
-        df["販売数量"] = clean_numeric_column(df, "販売数量")
-        dir_path = prepare_graph_dir()
-        graphs = generate_graphs(df, dir_path)
 
-        prompt = create_prompt(df, graphs)
+        # カテゴリ別予測
+        category_preds = forecast(df, "カテゴリ")
+
+        # 日別（合計）予測
+        date_df = df.groupby("日付").agg({"販売金額": "sum"}).reset_index()
+        date_preds_raw = forecast(date_df, "日付")
+        for _, v in date_preds_raw.items():
+            date_preds = v  # "日付"列は1グループなので中身だけ使う
+
+        # プロンプト作成（ChatGPTに予測を要約させる）
+        prompt = f"""
+あなたは小売部門の販売予測担当アシスタントです。
+以下のカテゴリ別および日別売上予測データに基づいて、来週の販売戦略や仕入れに役立つ要点を分析し、簡潔にコメントしてください。
+
+【カテゴリ別予測】（販売金額）
+{category_preds}
+
+【日別予測（合計）】（販売金額）
+{date_preds}
+
+【出力形式】
+・箇条書きで3〜5個にまとめてください
+・300文字以内で
+・売れそうなカテゴリや、売上が高そうな日付などを具体的に指摘してください
+"""
+
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -178,28 +200,11 @@ async def generate_weekly_report(file: UploadFile = File(...)):
             ]
         )
         summary = response.choices[0].message.content
-        markdown_images = "\n\n".join([f"**{g['title']}**\n\n![]({g['url']})" for g in graphs])
-        full_text = f"{summary}\n\n---\n\n{markdown_images}"
-
-        return JSONResponse(content={"html": full_text.replace("\n", "<br>")})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-@app.post("/predict")
-async def predict_sales(file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        df = pd.read_csv(pd.io.common.BytesIO(contents))
-        df["販売金額"] = clean_numeric_column(df, "販売金額")
-
-        product_preds = forecast(df, "商品名")
-        category_preds = forecast(df, "カテゴリ")
-        date_preds = forecast(df.groupby("日付").agg({"販売金額": "sum"}).reset_index(), "日付")
 
         return {
-            "product_forecast": product_preds,
             "category_forecast": category_preds,
-            "date_forecast": date_preds
+            "date_forecast": date_preds,
+            "summary": summary
         }
 
     except Exception as e:
