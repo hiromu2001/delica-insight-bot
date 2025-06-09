@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 import pandas as pd
-import matplotlib.pyplot as pltMore actions
+import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import uuid
