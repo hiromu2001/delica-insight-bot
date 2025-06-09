@@ -179,7 +179,11 @@ async def generate_weekly_report(file: UploadFile = File(...)):
             ]
         )
         summary = response.choices[0].message.content
-        return JSONResponse(content={"graphs": graphs, "summary": summary})
+        return JSONResponse(content={
+    "text": summary,
+    "images": [g["url"] for g in graphs]
+})
+
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
