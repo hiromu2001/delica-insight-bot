@@ -3,7 +3,8 @@ uvicorn
 pandas
 matplotlib
 seaborn
-python-dotenv
-openai
 aiofiles
-python-multipart
+openai
+python-dotenv
+scikit-learn
+lightgbm  
