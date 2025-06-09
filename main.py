@@ -180,13 +180,13 @@ async def generate_weekly_report(file: UploadFile = File(...)):
         )
         summary = response.choices[0].message.content
 
-        # ← ここを改良
         markdown_images = "\n\n".join([f"**{g['title']}**\n\n![]({g['url']})" for g in graphs])
         full_text = f"{summary}\n\n---\n\n{markdown_images}"
 
         return JSONResponse(content={
-            "text": full_text
+            "html": full_text.replace("\n", "<br>")
         })
+
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
