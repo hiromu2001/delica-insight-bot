@@ -8,3 +8,4 @@ openai
 python-dotenv
 scikit-learn
 lightgbm  
+python-multipart
